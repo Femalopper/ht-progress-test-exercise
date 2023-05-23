@@ -1,0 +1,76 @@
+{
+    "clientMessages": [{
+      "messageType": 1,
+      "message": {
+        "instrument": {
+            "eur_usd": 1,
+            "eur_rub": 2,
+            "usd_rub": 3
+        }
+      }
+      },
+      {
+        "messageType": 2,
+        "message": {
+            "subscriptionId": ""
+        }
+      },
+      {
+      "messageType": 3,
+      "message": {
+        "instrument": {
+            "eur_usd": 1,
+            "eur_rub": 2,
+            "usd_rub": 3
+        },
+        "side": {
+            "buy": 1,
+            "sell": 2
+        },
+        "amount": 0,
+        "price": 0
+      }
+      }
+    ],
+    "serverMessages": [
+      {
+        "messageType": 1,
+        "message": ""
+      },
+      {
+        "messageType": 2,
+        "message": {
+            "reason": ""
+        }
+      },
+      {
+        "messageType": 3,
+        "message": {
+            "orderId": "",
+            "orderStatus": {
+                "active": 1,
+                "filled": 2,
+                "rejected": 3,
+                "cancelled": 4
+            }
+          }
+      },
+      {
+        "messageType": 4,
+        "message": {
+            "subscriptionId": "",
+            "instrument": {
+                "eur_usd": 1,
+                "eur_rub": 2,
+                "usd_rub": 3
+            },
+            "quotes": [{
+                "bid": 0,
+                "offer": 0,
+                "minAmount": 0,
+                "maxAmount": 0
+            }]
+          }
+      }
+    ]
+}

@@ -1,0 +1,8 @@
+.main {
+  display: flex;
+  flex-direction: column;
+  flex-wrap: nowrap;
+  width: 400px;
+  padding: 5%;
+  background-color: beige;
+}
