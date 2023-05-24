@@ -3,6 +3,7 @@ import { useSelector, useDispatch } from "react-redux";
 import { SelectPicker, Input, InputGroup } from "rsuite";
 import generatePrices from "./randomPriceGenerator";
 import "./ticker.css";
+
 import {
   selectAmount,
   selectBuyPrice,
@@ -14,8 +15,9 @@ import {
   reset,
   setFormStatus,
   selectFormStatus,
-} from "../store/tickerSlice";
-import { WebSocket, Server } from 'mock-socket';
+} from "../../store/tickerSlice";
+import { WebSocket, Server } from "mock-socket";
+import { selectBids, setBids } from "../../store/bidSlice";
 
 const Ticker = () => {
   const instrument = useSelector(selectInstrument);
@@ -24,6 +26,7 @@ const Ticker = () => {
   const buyPrice = useSelector(selectBuyPrice);
   const operation = useSelector(selectOperation);
   const formStatus = useSelector(selectFormStatus);
+  const bids = useSelector(selectBids);
   const dispatch = useDispatch();
 
   const ws = useRef(null);
@@ -33,18 +36,18 @@ const Ticker = () => {
 
     mockServer.on("connection", (socket) => {
       socket.on("message", (data) => {
-      socket.send(data);
-      alert("Заявка размещена");
+        socket.send(data);
+        alert("Заявка размещена");
       });
       socket.on("close", () => {});
       socket.on("error", () => {});
     });
 
     ws.current = new WebSocket("ws://localhost:8080");
-    ws.current.onmessage = function(event) {
-      console.log(JSON.parse(event.data))
+    ws.current.onmessage = function (event) {
+      dispatch(setBids(JSON.parse(event.data).message))
     };
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     if (instrument && amount) {
@@ -109,15 +112,19 @@ const Ticker = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    const price = (operation === "sell") ? sellPrice : buyPrice;
     const bid = {
+      id: bids.length,
       instrument,
-      amount,
-      sellPrice,
-      buyPrice,
+      amount: amount + '.00',
+      price,
       operation,
+      creationDate: new Date(Date.now()),
+      status: '',
+      updateTime: '',
     };
 
-    ws.current.send(JSON.stringify({messageType: '3', message: bid}));
+    ws.current.send(JSON.stringify({ messageType: "3", message: bid }));
 
     dispatch(reset());
   };
