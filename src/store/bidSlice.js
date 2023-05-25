@@ -20,7 +20,9 @@ export const bidFormSlice = createSlice({
       console.log(data)
       const orderId = data.payload.orderId;
       const status = data.payload.orderStatus;
+      const changeTime = data.payload.updateDate;
       state.bids[orderId].status = status;
+      state.bids[orderId].updateDate = changeTime;
     },
     reset: () => initialState,
   },

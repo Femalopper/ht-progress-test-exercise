@@ -24,7 +24,7 @@ console.log(Object.values(bids));
         {(Object.values(bids)).map(({id, instrument, amount, price, operation, creationDate, status, updateDate}) => <tr key={id}>
             <td>{id}</td>
             <td>{creationDate.toString()}</td>
-            <td>{updateDate}</td>
+            <td>{updateDate.toString()}</td>
             <td>{status}</td>
             <td>{operation}</td>
             <td>{price}</td>

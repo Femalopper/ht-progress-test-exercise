@@ -19,7 +19,6 @@ import {
 import { WebSocket, Server } from "mock-socket";
 import {
   selectBids,
-  selectBidsIds,
   setBids,
   setBidsIds,
   updateBids,
@@ -46,14 +45,20 @@ const Ticker = () => {
         const parsedData = JSON.parse(data);
         if (parsedData.messageType === "3") {
           setTimeout(() => {
-            parsedData.message.status = "Filled";
-            console.log(parsedData, "parsed");
+            const date = new Date(Date.now()).toISOString();
+            const dateSlice = date.slice(0, date.indexOf("T"));
+            const timeSlice = date.slice(
+              date.indexOf("T") + 1,
+              date.indexOf("Z")
+            );
             socket.send(
               JSON.stringify({
                 messageType: "3",
                 message: {
                   orderId: parsedData.message.id,
                   orderStatus: generateStatus(),
+                  updateDate: `${dateSlice}
+                  ${timeSlice}`,
                 },
               })
             );
@@ -150,7 +155,7 @@ const Ticker = () => {
       creationDate: `${dateSlice}
       ${timeSlice}`,
       status: "",
-      updateTime: "",
+      updateDate: "",
     };
 
     ws.current.send(JSON.stringify({ messageType: "3", message: bid }));
