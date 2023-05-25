@@ -4,6 +4,7 @@ import './bids.css'
 
 const Bids = () => {
 const bids = useSelector(selectBids);
+console.log(Object.values(bids));
   return (
     <div className="table-container">
     <table className="table table-striped">
@@ -20,9 +21,9 @@ const bids = useSelector(selectBids);
         </tr>
       </thead>
       <tbody>
-        {bids.map(({id, instrument, amount, price, operation, creationDate, status, updateDate}) => <tr>
+        {(Object.values(bids)).map(({id, instrument, amount, price, operation, creationDate, status, updateDate}) => <tr key={id}>
             <td>{id}</td>
-            <td>{creationDate}</td>
+            <td>{creationDate.toString()}</td>
             <td>{updateDate}</td>
             <td>{status}</td>
             <td>{operation}</td>

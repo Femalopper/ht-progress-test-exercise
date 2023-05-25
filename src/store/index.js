@@ -7,4 +7,8 @@ export default configureStore({
     ticker: tickerReducer,
     bid: bidReducer,
   },
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      serializableCheck: false,
+    }),
 });

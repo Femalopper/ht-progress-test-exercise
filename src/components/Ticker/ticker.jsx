@@ -17,7 +17,14 @@ import {
   selectFormStatus,
 } from "../../store/tickerSlice";
 import { WebSocket, Server } from "mock-socket";
-import { selectBids, setBids } from "../../store/bidSlice";
+import {
+  selectBids,
+  selectBidsIds,
+  setBids,
+  setBidsIds,
+  updateBids,
+} from "../../store/bidSlice";
+import generateStatus from "./randomStatusGenerator";
 
 const Ticker = () => {
   const instrument = useSelector(selectInstrument);
@@ -36,18 +43,36 @@ const Ticker = () => {
 
     mockServer.on("connection", (socket) => {
       socket.on("message", (data) => {
-        socket.send(data);
-        alert("Заявка размещена");
+        const parsedData = JSON.parse(data);
+        if (parsedData.messageType === "3") {
+          setTimeout(() => {
+            parsedData.message.status = "Filled";
+            console.log(parsedData, "parsed");
+            socket.send(
+              JSON.stringify({
+                messageType: "3",
+                message: {
+                  orderId: parsedData.message.id,
+                  orderStatus: generateStatus(),
+                },
+              })
+            );
+          }, 2000);
+        }
       });
       socket.on("close", () => {});
       socket.on("error", () => {});
     });
 
     ws.current = new WebSocket("ws://localhost:8080");
+
     ws.current.onmessage = function (event) {
-      dispatch(setBids(JSON.parse(event.data).message))
+      const parsedData = JSON.parse(event.data);
+      if (parsedData.messageType === "3") {
+        dispatch(updateBids(parsedData.message));
+      }
     };
-  }, [dispatch]);
+  }, []);
 
   useEffect(() => {
     if (instrument && amount) {
@@ -112,20 +137,26 @@ const Ticker = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const price = (operation === "sell") ? sellPrice : buyPrice;
+    const price = operation === "sell" ? sellPrice : buyPrice;
+    const date = new Date(Date.now()).toISOString();
+    const dateSlice = date.slice(0, date.indexOf("T"));
+    const timeSlice = date.slice(date.indexOf("T") + 1, date.indexOf("Z"));
     const bid = {
-      id: bids.length,
+      id: Object.keys(bids).length + 1,
       instrument,
-      amount: amount + '.00',
+      amount: amount + ".00",
       price,
       operation,
-      creationDate: new Date(Date.now()),
-      status: '',
-      updateTime: '',
+      creationDate: `${dateSlice}
+      ${timeSlice}`,
+      status: "",
+      updateTime: "",
     };
 
     ws.current.send(JSON.stringify({ messageType: "3", message: bid }));
 
+    dispatch(setBids(bid));
+    dispatch(setBidsIds(bid));
     dispatch(reset());
   };
 
