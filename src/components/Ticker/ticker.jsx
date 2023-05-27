@@ -15,6 +15,12 @@ import {
   reset,
   setFormStatus,
   selectFormStatus,
+  selectCurrentSubscription,
+  setCurrentSubscription,
+  selectInstrumentStatus,
+  selectAmountStatus,
+  selectSellPriceStatus,
+  selectBuyPriceStatus,
 } from "../../store/tickerSlice";
 import { WebSocket, Server } from "mock-socket";
 import {
@@ -24,18 +30,24 @@ import {
   updateBids,
 } from "../../store/bidSlice";
 import generateStatus from "./randomStatusGenerator";
+import { uniqueId } from "lodash";
 
 const Ticker = () => {
   const instrument = useSelector(selectInstrument);
+  const instrumentStatus = useSelector(selectInstrumentStatus);
   const amount = useSelector(selectAmount);
+  const amountStatus = useSelector(selectAmountStatus);
   const sellPrice = useSelector(selectSellPrice);
+  const sellPriceStatus = useSelector(selectSellPriceStatus);
   const buyPrice = useSelector(selectBuyPrice);
+  const buyPriceStatus = useSelector(selectBuyPriceStatus);
   const operation = useSelector(selectOperation);
   const formStatus = useSelector(selectFormStatus);
   const bids = useSelector(selectBids);
+  const currentSubscription = useSelector(selectCurrentSubscription);
   const dispatch = useDispatch();
-
   const ws = useRef(null);
+  const isUnsubscribed = useRef(false);
 
   useEffect(() => {
     const mockServer = new Server("ws://localhost:8080");
@@ -43,8 +55,43 @@ const Ticker = () => {
     mockServer.on("connection", (socket) => {
       socket.on("message", (data) => {
         const parsedData = JSON.parse(data);
-        if (parsedData.messageType === "3") {
-          setTimeout(() => {
+        if (parsedData.messageType === "2") {
+          console.log("nd");
+          isUnsubscribed.current = true;
+        }
+        if (parsedData.messageType === "1") {
+          console.log('k')
+          const subscriptionId = uniqueId();
+          isUnsubscribed.current = false;
+          socket.send(
+            JSON.stringify({
+              messageType: "1",
+              message: {
+                subscriptionId,
+                prices: generatePrices(),
+              },
+            })
+          );
+          const interval = setInterval(() => {
+            if (isUnsubscribed.current) {
+              console.log("d");
+              Promise.resolve(clearInterval(interval)).then(() =>
+                dispatch(reset())
+              );
+            }
+            socket.send(
+              JSON.stringify({
+                messageType: "4",
+                message: {
+                  subscriptionId,
+                  prices: generatePrices(),
+                  instrument,
+                },
+              })
+            );
+          }, 3000);
+        } else if (parsedData.messageType === "3") {
+          setInterval(() => {
             const date = new Date(Date.now()).toISOString();
             const dateSlice = date.slice(0, date.indexOf("T"));
             const timeSlice = date.slice(
@@ -73,28 +120,53 @@ const Ticker = () => {
 
     ws.current.onmessage = function (event) {
       const parsedData = JSON.parse(event.data);
-      if (parsedData.messageType === "3") {
+      if (parsedData.messageType === "1") {
+        dispatch(setCurrentSubscription(parsedData.message.subscriptionId));
+        dispatch(setValue([parsedData.message.prices.sellPrice, "sellPrice"]));
+        dispatch(setFieldStatus(["filled", "sellPrice"]));
+        dispatch(setValue([parsedData.message.prices.buyPrice, "buyPrice"]));
+        dispatch(setFieldStatus(["filled", "buyPrice"]));
+      }
+      if (parsedData.messageType === "4") {
+        dispatch(setValue([parsedData.message.prices.sellPrice, "sellPrice"]));
+        dispatch(setValue([parsedData.message.prices.buyPrice, "buyPrice"]));
+      } else if (parsedData.messageType === "3") {
         dispatch(updateBids(parsedData.message));
       }
     };
   }, []);
 
   useEffect(() => {
-    if (instrument && amount) {
-      const prices = generatePrices();
-      dispatch(setValue([prices.sellPrice, "sellPrice"]));
-      dispatch(setFieldStatus(["filled", "sellPrice"]));
-      dispatch(setValue([prices.buyPrice, "buyPrice"]));
-      dispatch(setFieldStatus(["filled", "buyPrice"]));
+    if (instrumentStatus === "filled") {
+      ws.current.send(
+        JSON.stringify({ messageType: "1", message: instrument })
+      );
+    } else {
+      ws.current.send(
+              JSON.stringify({
+                messageType: "2",
+                message: { subscriptionId: currentSubscription },
+              })
+            );
+    }
+    if (
+      instrumentStatus === "filled" &&
+      amountStatus === "filled" &&
+      sellPriceStatus === "filled" &&
+      buyPriceStatus === "filled" &&
+      amountStatus === "filled"
+    ) {
       dispatch(setFormStatus("filled"));
     } else {
-      dispatch(setValue([null, "sellPrice"]));
-      dispatch(setFieldStatus(["unfilled", "sellPrice"]));
-      dispatch(setValue([null, "buyPrice"]));
-      dispatch(setFieldStatus(["unfilled", "buyPrice"]));
       dispatch(setFormStatus("unfilled"));
     }
-  }, [instrument, amount, dispatch]);
+  }, [
+    instrumentStatus,
+    amountStatus,
+    sellPriceStatus,
+    buyPriceStatus,
+    dispatch,
+  ]);
 
   const instruments = [
     {
@@ -125,12 +197,21 @@ const Ticker = () => {
 
   const changeInstrument = (val) => {
     dispatch(setValue([val, "instrument"]));
-    dispatch(setFieldStatus(["filled", "instrument"]));
+    if (val) {
+      dispatch(setFieldStatus(["filled", "instrument"]));
+    } else {
+      dispatch(setFieldStatus(["unfilled", "instrument"]));
+    }
   };
 
   const changeAmount = (val) => {
+    console.log(val);
     dispatch(setValue([val, "amount"]));
-    dispatch(setFieldStatus(["filled", "amount"]));
+    if (+val > 0) {
+      dispatch(setFieldStatus(["filled", "amount"]));
+    } else {
+      dispatch(setFieldStatus(["unfilled", "amount"]));
+    }
   };
 
   const clickHandler = (oper) => () => {
@@ -162,7 +243,13 @@ const Ticker = () => {
 
     dispatch(setBids(bid));
     dispatch(setBidsIds(bid));
-    dispatch(reset());
+
+    ws.current.send(
+      JSON.stringify({
+        messageType: "2",
+        message: { subscriptionId: currentSubscription },
+      })
+    );
   };
 
   return (
@@ -173,7 +260,6 @@ const Ticker = () => {
           data={instruments}
           value={instrument}
           onChange={(val) => changeInstrument(val)}
-          onClean={() => dispatch(reset())}
           menuMaxHeight={100}
         />
       </div>
